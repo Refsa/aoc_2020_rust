@@ -5,17 +5,12 @@ use std::io::{BufRead, BufReader};
 
 const SHINY_GOLD: &str = "shiny gold";
 
+const PART1_BENCHES: u128 = 100;
+const PART2_BENCHES: u128 = 100;
+
 #[derive(Debug, Default, Clone)]
 struct Bag {
     contents: HashMap<String, u32>,
-}
-
-impl Bag {
-    pub fn new() -> Self {
-        Bag {
-            contents: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Default, Debug)]
@@ -45,7 +40,7 @@ pub fn aoc_7(reader: BufReader<File>) -> String {
         .for_each(|l| {
             let content: Vec<&str> = l.split("bags contain").collect();
 
-            let mut bag = Bag::new();
+            let mut bag = Bag::default();
             if !content[1].contains("no other bags") {
                 for (color, count) in content[1].split(',').map(|i| digest_content(i)) {
                     bag.contents.insert(color, count);
@@ -54,28 +49,42 @@ pub fn aoc_7(reader: BufReader<File>) -> String {
             bags.contents.insert(content[0].trim().to_owned(), bag);
         });
 
-    let tree = BagTree::construct(&bags, SHINY_GOLD.to_string());
+    let sw = std::time::Instant::now();
+    let mut part1 = 0u32;
+    for i in 0..PART1_BENCHES {
+        part1 = part_1(&bags);
+    }
+    println!("Part 1 Time: {} ms avg", sw.elapsed().as_millis() / PART1_BENCHES);
 
-    format!("{}\n\t{}", part_1(&bags), tree.part_2())
+    let sw = std::time::Instant::now();
+    let mut part2 = 0u32;
+    for i in 0..PART2_BENCHES {
+        let tree = BagTree::construct(&bags, SHINY_GOLD.to_string());
+        let part2 = tree.part_2();
+    }
+    println!("Part 1 Time: {} µs avg", sw.elapsed().as_micros() / PART2_BENCHES);
+
+
+    format!("P1: {}\n\tP2: {}", part1, part2)
 }
 
 fn part_1(bags: &Bags) -> u32 {
     let mut count = 0;
-    let mut outer = Vec::new();
-    let mut searched = HashSet::new();
-    outer.push(SHINY_GOLD);
+    let mut open = Vec::new();
+    let mut closed = HashSet::new();
+    open.push(SHINY_GOLD);
     loop {
-        let val = outer.pop().unwrap().to_owned();
-        searched.insert(val.to_owned());
+        let val = open.pop().unwrap().to_owned();
+        closed.insert(val.to_owned());
 
         for (k, v) in &bags.contents {
-            if v.contents.contains_key(&val) && !searched.contains(k) {
+            if v.contents.contains_key(&val) && !closed.contains(k) {
                 count += 1;
-                outer.push(k);
+                open.push(k);
             }
         }
 
-        if outer.len() == 0 {
+        if open.len() == 0 {
             break;
         }
     }
