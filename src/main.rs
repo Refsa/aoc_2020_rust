@@ -1,3 +1,5 @@
+#![feature(bool_to_option)]
+
 use std::fs::File;
 use std::{io::BufReader, path::Path};
 
@@ -5,12 +7,13 @@ mod aoc;
 use aoc::*;
 
 fn main() {
-    run(1, aoc_1);
-    run(2, aoc_2);
-    run(3, aoc_3);
-    run(4, aoc_4);
-    run(5, aoc_5);
-    run(6, aoc_6);
+    // run(1, aoc_1);
+    // run(2, aoc_2);
+    // run(3, aoc_3);
+    // run(4, aoc_4);
+    // run(5, aoc_5);
+    // run(6, aoc_6);
+    run(7, aoc_7);
 }
 
 fn load_file(path: &str) -> BufReader<File> {
