@@ -1,12 +1,13 @@
 use crate::File;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
+use std::{collections::HashMap};
 
 const SHINY_GOLD: &str = "shiny gold";
 
-const PART1_BENCHES: u128 = 100;
-const PART2_BENCHES: u128 = 100;
+const PARSER_BENCHES: u128 = 1000;
+const PART1_BENCHES: u128 = 500;
+const PART2_BENCHES: u128 = 20000;
 
 #[derive(Debug, Default, Clone)]
 struct Bag {
@@ -19,53 +20,61 @@ struct Bags {
 }
 
 fn digest_content(line: &str) -> (String, u32) {
-    let inner = line.trim();
-    let split = inner.rmatch_indices("bag").nth(0).unwrap();
-    let inner = inner.split_at(split.0).0;
+    let split = line.rmatch_indices(" bag").nth(0).unwrap().0;
+    let inner = line.split_at(split).0;
 
     let (count, color) = inner.split_at(1);
-    let color = color.trim().to_owned();
+    let color = color.trim_start().to_owned();
     let count: u32 = count.parse().unwrap();
 
     (color, count)
 }
 
-pub fn aoc_7(reader: BufReader<File>) -> String {
+fn parse_contents(reader: &Vec<String>) -> Bags {
     let mut bags: Bags = Default::default();
-
     reader
-        .lines()
-        .into_iter()
-        .map(|l| l.unwrap())
+        .iter()
         .for_each(|l| {
-            let content: Vec<&str> = l.split("bags contain").collect();
+            let content: Vec<&str> = l.split(" bags contain ").collect();
 
             let mut bag = Bag::default();
             if !content[1].contains("no other bags") {
-                for (color, count) in content[1].split(',').map(|i| digest_content(i)) {
+                for (color, count) in content[1].split(", ").map(|i| digest_content(i)) {
                     bag.contents.insert(color, count);
                 }
             }
             bags.contents.insert(content[0].trim().to_owned(), bag);
         });
+    bags
+}
+
+pub fn aoc_7(reader: BufReader<File>) -> String {
+    let lines: Vec<String> = reader.lines().map(|s| s.unwrap()).collect();
 
     let sw = std::time::Instant::now();
+    for _ in 0..PARSER_BENCHES {
+        parse_contents(&lines);
+    }
+    let parser_time = sw.elapsed().as_millis() / PARSER_BENCHES;
+
+    let bags = parse_contents(&lines);
+    
+    let sw = std::time::Instant::now();
     let mut part1 = 0u32;
-    for i in 0..PART1_BENCHES {
+    for _ in 0..PART1_BENCHES {
         part1 = part_1(&bags);
     }
-    println!("Part 1 Time: {} ms avg", sw.elapsed().as_millis() / PART1_BENCHES);
+    let part1_time = sw.elapsed().as_millis() / PART1_BENCHES;
 
     let sw = std::time::Instant::now();
     let mut part2 = 0u32;
-    for i in 0..PART2_BENCHES {
+    for _ in 0..PART2_BENCHES {
         let tree = BagTree::construct(&bags, SHINY_GOLD.to_string());
-        let part2 = tree.part_2();
+        part2 = tree.part_2();
     }
-    println!("Part 1 Time: {} µs avg", sw.elapsed().as_micros() / PART2_BENCHES);
+    let part2_time = sw.elapsed().as_micros() / PART2_BENCHES;
 
-
-    format!("P1: {}\n\tP2: {}", part1, part2)
+    format!("Parser took {} ms\n\tP1: {} ({} ms)\n\tP2: {} ({} µs)", parser_time, part1, part1_time, part2, part2_time)
 }
 
 fn part_1(bags: &Bags) -> u32 {
