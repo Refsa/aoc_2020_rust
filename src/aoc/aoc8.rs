@@ -77,7 +77,7 @@ fn part_2(program: &Program) -> i64 {
     let mut ran_ops = [0u8; 1024];
     let mut op_seq = [0usize; 512];
     let mut op_seq_count = 0;
-    let mut looped_at: &usize = &0usize;
+    let mut looped_at= 0usize;
 
     loop {
         let cl = state.current_line;
@@ -88,16 +88,16 @@ fn part_2(program: &Program) -> i64 {
 
         ran_ops[cl] = 1;
         if ran_ops[state.current_line] != 0 {
-            looped_at = &state.current_line;
+            looped_at = state.current_line;
             break;
         }
     }
 
     op_seq
         .iter()
-        .skip_while(|v| *v != looped_at)
+        .skip_while(|v| *v != &looped_at)
         .skip(1)
-        .take_while(|v| *v != looped_at)
+        .take_while(|v| *v != &looped_at)
         .filter(|v| program.code[**v].op_code != OpCode::ACC)
         .filter_map(|rt| {
             if let Some(acc) = part_2_rerunner(&program, *rt) {
@@ -134,7 +134,7 @@ fn part_2_rerunner(program: &Program, replace: usize) -> Option<i64> {
             return None;
         }
     }
-    
+
     Some(state.accumulator)
 }
 
