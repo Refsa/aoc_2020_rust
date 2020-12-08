@@ -9,35 +9,25 @@ pub fn aoc_8(reader: BufReader<File>) -> String {
     let program = Program::new(&lines);
 
     let part1 = part_1_buckets(&program);
-    if false {
-        let sw = std::time::Instant::now();
-        for i in 0..10000 {
-            let part1 = part_1_buckets(&program);
-        }
-        let elapsed = sw.elapsed().as_micros() / 10000;
-        println!("Part 1 Buckets Time: {} µs", elapsed);
-        assert_eq!(part1, 1810);
-
-        let sw = std::time::Instant::now();
-        for i in 0..10000 {
-            let part1 = part_1_hashset(&program);
-        }
-        let elapsed = sw.elapsed().as_micros() / 10000;
-        println!("Part 1 Hashset Time: {} µs", elapsed);
-        assert_eq!(part1, 1810);
+    assert_eq!(part1, 1810);
+    let sw = std::time::Instant::now();
+    for i in 0..10000 {
+        let part1 = part_1_buckets(&program);
     }
+    let p1_elapsed = sw.elapsed().as_micros() / 10000;
 
     let part2 = part_2(&program);
-    if true {
-        let sw = std::time::Instant::now();
-        for i in 0..1000 {
-            let part2 = part_2(&program);
-        }
-        let elapsed = sw.elapsed().as_micros() / 1000;
-        println!("Part 2 Time: {} µs", elapsed);
+    assert_eq!(part2, 969);
+    let sw = std::time::Instant::now();
+    for i in 0..1000 {
+        let part2 = part_2(&program);
     }
+    let p2_elapsed = sw.elapsed().as_micros() / 1000;
 
-    format!("Part1: {}\n\tPart2: {}", part1, part2)
+    format!(
+        "Part1 (~{} µs): {}\n\tPart2 (~{} µs): {}",
+        p1_elapsed, part1, p2_elapsed, part2
+    )
 }
 
 // Since the problem space is small a simple bucket can track our progress.
@@ -85,24 +75,27 @@ fn part_1_hashset(program: &Program) -> i64 {
 fn part_2(program: &Program) -> i64 {
     let mut state = State::default();
     let mut ran_ops = [0u8; 2048];
-    let mut op_seq = Vec::new();
+    let mut op_seq = [0usize; 2048];
+    let mut op_seq_count = 0;
 
     loop {
         let cl = state.current_line;
-        op_seq.push(cl);
+        op_seq[op_seq_count] = cl;
+        op_seq_count += 1;
 
         program.run_line(cl, &mut state);
 
         ran_ops[cl] = 1;
         if ran_ops[state.current_line] != 0 {
-            op_seq.push(state.current_line);
+            op_seq[op_seq_count] = state.current_line;
+            op_seq_count += 1;
             break;
         }
     }
 
     let (mut s, mut e) = (0, 0);
-    for i in 0..op_seq.len() {
-        for j in i + 1..op_seq.len() {
+    for i in 0..op_seq_count {
+        for j in i + 1..op_seq_count {
             if op_seq[i] == op_seq[j] {
                 s = i + 1;
                 e = j;
@@ -110,50 +103,52 @@ fn part_2(program: &Program) -> i64 {
         }
     }
 
-    let mut accumulator = 0;
-
-    for rt in op_seq
+    op_seq
         .iter()
         .skip(s)
         .take(e - s)
-        .filter(|o| program.code[**o].op_code != OpCode::ACC)
-    {
-        let mut state = State::default();
-        let mut ran_ops = [0u8; 2048];
-        let mut success = true;
+        .filter_map(|rt| {
+            if program.code[*rt].op_code == OpCode::ACC {
+                return None;
+            }
 
-        loop {
-            let cl = state.current_line;
-
-            if cl == *rt {
-                let op = match program.code[cl].op_code {
-                    OpCode::JMP => OpCode::NOP,
-                    OpCode::NOP => OpCode::JMP,
-                    _ => OpCode::UNKNOWN,
-                };
-
-                program.run_line_with_op(cl, op, &mut state);
+            if let Some(acc) = part_2_rerunner(&program, *rt) {
+                Some(acc)
             } else {
-                program.run_line(cl, &mut state);
+                None
             }
+        })
+        .nth(0)
+        .unwrap_or_default()
+}
 
-            ran_ops[cl] = 1;
-            if ran_ops[state.current_line] != 0 {
-                success = false;
-                break;
-            }
-            if program.is_eop(state.current_line) {
-                break;
-            }
+fn part_2_rerunner(program: &Program, replace: usize) -> Option<i64> {
+    let mut state = State::default();
+    let mut ran_ops = [0u8; 1024];
+
+    loop {
+        let cl = state.current_line;
+
+        if cl == replace {
+            let op = match program.code[cl].op_code {
+                OpCode::JMP => OpCode::NOP,
+                OpCode::NOP => OpCode::JMP,
+                _ => OpCode::UNKNOWN,
+            };
+
+            program.run_line_with_op(cl, op, &mut state);
+        } else {
+            program.run_line(cl, &mut state);
         }
 
-        if success {
-            accumulator = state.accumulator;
-            break;
+        ran_ops[cl] = 1;
+        if ran_ops[state.current_line] != 0 {
+            return None;
+        }
+        if program.is_eop(state.current_line) {
+            return Some(state.accumulator);
         }
     }
-
-    accumulator
 }
 
 struct Program {
