@@ -1,4 +1,5 @@
 #![feature(bool_to_option)]
+#![feature(slice_fill)]
 
 use std::fs::File;
 use std::{io::BufReader, path::Path};

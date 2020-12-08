@@ -19,10 +19,10 @@ pub fn aoc_8(reader: BufReader<File>) -> String {
     let part2 = part_2(&program);
     assert_eq!(part2, 969);
     let sw = std::time::Instant::now();
-    for i in 0..1000 {
+    for i in 0..10000 {
         let part2 = part_2(&program);
     }
-    let p2_elapsed = sw.elapsed().as_micros() / 1000;
+    let p2_elapsed = sw.elapsed().as_micros() / 10000;
 
     format!(
         "Part1 (~{} µs): {}\n\tPart2 (~{} µs): {}",
@@ -74,9 +74,10 @@ fn part_1_hashset(program: &Program) -> i64 {
 
 fn part_2(program: &Program) -> i64 {
     let mut state = State::default();
-    let mut ran_ops = [0u8; 2048];
-    let mut op_seq = [0usize; 2048];
+    let mut ran_ops = [0u8; 1024];
+    let mut op_seq = [0usize; 512];
     let mut op_seq_count = 0;
+    let mut looped_at: &usize = &0usize;
 
     loop {
         let cl = state.current_line;
@@ -87,31 +88,18 @@ fn part_2(program: &Program) -> i64 {
 
         ran_ops[cl] = 1;
         if ran_ops[state.current_line] != 0 {
-            op_seq[op_seq_count] = state.current_line;
-            op_seq_count += 1;
+            looped_at = &state.current_line;
             break;
-        }
-    }
-
-    let (mut s, mut e) = (0, 0);
-    for i in 0..op_seq_count {
-        for j in i + 1..op_seq_count {
-            if op_seq[i] == op_seq[j] {
-                s = i + 1;
-                e = j;
-            }
         }
     }
 
     op_seq
         .iter()
-        .skip(s)
-        .take(e - s)
+        .skip_while(|v| *v != looped_at)
+        .skip(1)
+        .take_while(|v| *v != looped_at)
+        .filter(|v| program.code[**v].op_code != OpCode::ACC)
         .filter_map(|rt| {
-            if program.code[*rt].op_code == OpCode::ACC {
-                return None;
-            }
-
             if let Some(acc) = part_2_rerunner(&program, *rt) {
                 Some(acc)
             } else {
@@ -157,16 +145,16 @@ struct Program {
 
 impl Program {
     pub fn new(lines: &Vec<String>) -> Program {
-        let mut code = Vec::new();
-        for (i, l) in lines.iter().enumerate() {
-            let (op, num) = Self::parse_line(l);
-
-            code.push(Op {
-                line: i as u64,
-                op_code: op.into(),
-                value: num,
-            });
-        }
+        let code = lines
+            .iter()
+            .map(|l| {
+                let (op, num) = Self::parse_line(l);
+                Op {
+                    op_code: op.into(),
+                    value: num,
+                }
+            })
+            .collect();
 
         Program { code: code }
     }
@@ -211,7 +199,6 @@ impl Program {
 }
 
 struct Op {
-    line: u64,
     op_code: OpCode,
     value: i64,
 }
@@ -223,6 +210,7 @@ struct State {
 }
 
 #[derive(Eq, PartialEq)]
+#[repr(u32)]
 enum OpCode {
     UNKNOWN,
     JMP,
