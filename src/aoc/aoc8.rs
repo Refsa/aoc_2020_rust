@@ -114,7 +114,7 @@ fn part_2_rerunner(program: &Program, replace: usize) -> Option<i64> {
     let mut state = State::default();
     let mut ran_ops = [0u8; 1024];
 
-    loop {
+    while !program.is_eop(state.current_line) {
         let cl = state.current_line;
 
         if cl == replace {
@@ -133,10 +133,9 @@ fn part_2_rerunner(program: &Program, replace: usize) -> Option<i64> {
         if ran_ops[state.current_line] != 0 {
             return None;
         }
-        if program.is_eop(state.current_line) {
-            return Some(state.accumulator);
-        }
     }
+    
+    Some(state.accumulator)
 }
 
 struct Program {
@@ -160,11 +159,8 @@ impl Program {
     }
 
     fn parse_line(line: &String) -> (&str, i64) {
-        let (op, offset) = line.split_at(3);
-        let mut offset = offset.chars();
-        let sign = if offset.nth(0).unwrap() == '+' { -1 } else { 1 };
-        let num: i64 = offset.as_str().parse().unwrap();
-        let num = num * sign;
+        let (op, num) = line.split_once(' ').unwrap();
+        let num: i64 = num.parse().unwrap();
 
         (op, num)
     }

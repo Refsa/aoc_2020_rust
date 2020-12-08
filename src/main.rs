@@ -1,5 +1,6 @@
 #![feature(bool_to_option)]
 #![feature(slice_fill)]
+#![feature(str_split_once)]
 
 use std::fs::File;
 use std::{io::BufReader, path::Path};
