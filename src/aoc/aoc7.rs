@@ -7,9 +7,9 @@ use std::{collections::HashSet, sync::Arc, thread::JoinHandle};
 
 const SHINY_GOLD: &str = "shiny gold";
 
-const PARSER_BENCHES: u128 = 1;
-const PART1_BENCHES: u128 = 20;
-const PART2_BENCHES: u128 = 1;
+const PARSER_BENCHES: u128 = 1000;
+const PART1_BENCHES: u128 = 1000;
+const PART2_BENCHES: u128 = 10000;
 
 #[derive(Debug, Default, Clone)]
 struct Bag {
@@ -55,7 +55,7 @@ pub fn aoc_7(reader: BufReader<File>) -> String {
     for _ in 0..PARSER_BENCHES {
         parse_contents(&lines);
     }
-    let parser_time = sw.elapsed().as_millis() / PARSER_BENCHES;
+    let parser_time = sw.elapsed().as_micros() / PARSER_BENCHES;
 
     let bags = parse_contents(&lines);
 
@@ -63,9 +63,9 @@ pub fn aoc_7(reader: BufReader<File>) -> String {
     let mut part1 = 0u32;
     for _ in 0..PART1_BENCHES {
         // part1 = part_1(&bags);
-        part1 = part_1_mt_2(&bags);
+        part1 = part_1(&bags);
     }
-    let part1_time = sw.elapsed().as_millis() / PART1_BENCHES;
+    let part1_time = sw.elapsed().as_micros() / PART1_BENCHES;
     assert_eq!(part1, 142);
 
     let sw = std::time::Instant::now();
@@ -78,7 +78,7 @@ pub fn aoc_7(reader: BufReader<File>) -> String {
     assert_eq!(part2, 10219);
 
     format!(
-        "Parser took {} ms\n\tP1: {} ({} ms)\n\tP2: {} ({} µs)",
+        "Parser took {} µs\n\tP1: {} ({} ms)\n\tP2: {} ({} µs)",
         parser_time, part1, part1_time, part2, part2_time
     )
 }
@@ -101,79 +101,6 @@ fn part_1(bags: &Bags) -> u32 {
     }
 
     closed.len() as u32 - 1
-}
-
-fn part_1_mt_2(bags: &Bags) -> u32 {
-    let closed = Arc::new(RwLock::new(HashSet::new()));
-    let open = Arc::new(RwLock::new(vec![SHINY_GOLD.to_string()]));
-    let bags = Arc::new(bags.clone());
-
-    let lock = Arc::new(RwLock::new(0));
-
-    (0..4)
-        .into_iter()
-        .map(|i| {
-            let b = bags.clone();
-            let c = closed.clone();
-            let o = open.clone();
-            let l = lock.clone();
-
-            std::thread::spawn(move || digest(b, c, o, l))
-        })
-        .for_each(|jh| jh.join().unwrap());
-    println!("");
-
-    closed.clone().read().len() as u32 - 1
-}
-
-fn digest(bags: Arc<Bags>, closed: Arc<RwLock<HashSet<String>>>, open: Arc<RwLock<Vec<String>>>, lock: Arc<RwLock<u32>>) {
-    let mut count = 0;
-
-    while open.read().len() > 0 {
-        if let Some(val) = open.write().pop() {
-            closed.write().insert(val.to_owned());
-            
-            let write_lock = lock.write();
-            bags.contents
-                .iter()
-                .filter(|kv| kv.1.contents.contains_key(&val) && !closed.read().contains(kv.0))
-                .for_each(|kv| open.write().push(kv.0.to_owned()));
-            count += 1;
-        }
-    }
-
-    println!(
-        "\tThread {:?} digested {}",
-        std::thread::current().id(),
-        count
-    );
-}
-
-fn part_1_mt(bags: &Bags) -> u32 {
-    let closed = Arc::new(RwLock::new(HashSet::new()));
-    let bags = Arc::new(bags.clone());
-
-    let b = bags.clone();
-    let c = closed.clone();
-    scan_key(b, c, SHINY_GOLD.to_string()).join().unwrap();
-
-    closed.clone().read().len() as u32 - 1
-}
-
-fn scan_key(bags: Arc<Bags>, closed: Arc<RwLock<HashSet<String>>>, key: String) -> JoinHandle<()> {
-    if !closed.write().insert(key.to_owned()) {}
-
-    std::thread::spawn(move || {
-        let handles = bags
-            .contents
-            .iter()
-            .filter(|kv| kv.1.contents.contains_key(&key) && !closed.read().contains(kv.0))
-            .map(|kv| scan_key(bags.clone(), closed.clone(), kv.0.to_owned()));
-
-        for handle in handles {
-            handle.join().unwrap();
-        }
-    })
 }
 
 #[derive(Default)]

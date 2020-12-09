@@ -11,8 +11,8 @@ pub fn aoc_1(reader: BufReader<File>) -> String {
     let val: u32 = {
         let mut _val = 0;
         for i in 0..nums.len() {
-            for j in i..nums.len() {
-                for k in j..nums.len() {
+            for j in i+1..nums.len() {
+                for k in j+1..nums.len() {
                     let sum = nums[i] + nums[j] + nums[k];
                     if sum == 2020 {
                         _val = nums[i] * nums[j] * nums[k];

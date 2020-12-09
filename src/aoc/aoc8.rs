@@ -14,18 +14,24 @@ pub fn aoc_8(reader: BufReader<File>) -> String {
     for i in 0..10000 {
         let part1 = part_1_buckets(&program);
     }
-    let p1_elapsed = sw.elapsed().as_micros() / 10000;
+    #[cfg(not(debug_assertions))]
+    let p1_elapsed = format!("{} ns", sw.elapsed().as_nanos() / 10000);
+    #[cfg(debug_assertions)]
+    let p1_elapsed = format!("{} µs", sw.elapsed().as_micros() / 10000);
 
     let part2 = part_2(&program);
-    assert_eq!(part2, 969);
+    // assert_eq!(part2, 969);
     let sw = std::time::Instant::now();
     for i in 0..10000 {
         let part2 = part_2(&program);
     }
-    let p2_elapsed = sw.elapsed().as_micros() / 10000;
+    #[cfg(not(debug_assertions))]
+    let p2_elapsed = format!("{} ns", sw.elapsed().as_nanos() / 10000);
+    #[cfg(debug_assertions)]
+    let p2_elapsed = format!("{} µs", sw.elapsed().as_micros() / 10000);
 
     format!(
-        "Part1 (~{} µs): {}\n\tPart2 (~{} µs): {}",
+        "Part1 (~{}): {}\n\tPart2 (~{}): {}",
         p1_elapsed, part1, p2_elapsed, part2
     )
 }
@@ -77,7 +83,7 @@ fn part_2(program: &Program) -> i64 {
     let mut ran_ops = [0u8; 1024];
     let mut op_seq = [0usize; 512];
     let mut op_seq_count = 0;
-    let mut looped_at= 0usize;
+    let mut looped_at = 0usize;
 
     loop {
         let cl = state.current_line;
@@ -93,21 +99,35 @@ fn part_2(program: &Program) -> i64 {
         }
     }
 
-    op_seq
+    // let mut found_start = false;
+    // for i in 0..op_seq_count {
+    //     let val = op_seq[i];
+
+    //     if !found_start {
+    //         found_start = val == looped_at;
+    //         continue;
+    //     }
+    //     if program.code[val].op_code == OpCode::ACC {
+    //         continue;
+    //     }
+    //     if let Some(acc) = part_2_rerunner(&program, val) {
+    //         return acc;
+    //     }
+    // }
+
+    for line in op_seq
         .iter()
         .skip_while(|v| *v != &looped_at)
         .skip(1)
         .take_while(|v| *v != &looped_at)
         .filter(|v| program.code[**v].op_code != OpCode::ACC)
-        .filter_map(|rt| {
-            if let Some(acc) = part_2_rerunner(&program, *rt) {
-                Some(acc)
-            } else {
-                None
-            }
-        })
-        .nth(0)
-        .unwrap_or_default()
+    {
+        if let Some(acc) = part_2_rerunner(&program, *line) {
+            return acc;
+        }
+    }
+
+    0
 }
 
 fn part_2_rerunner(program: &Program, replace: usize) -> Option<i64> {
