@@ -4,6 +4,8 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+const WINDOW_SIZE: usize = 25;
+
 pub fn aoc_9(reader: BufReader<File>) -> String {
     let lines: Vec<u64> = reader
         .lines()
@@ -11,74 +13,75 @@ pub fn aoc_9(reader: BufReader<File>) -> String {
         .map(|l| l.parse::<u64>().unwrap())
         .collect();
 
-    let preamble_size = 25;
-
-    let mut invalid_number = 0;
-
     let sw = std::time::Instant::now();
     for _ in 0..1000 {
-        for i in preamble_size..lines.len() {
-            let preamble = &lines[i - preamble_size..i];
-            let current = lines[i];
-
-            let mut valid = false;
-            for j in 0..preamble_size {
-                for k in j + 1..preamble_size {
-                    if preamble[j] + preamble[k] == current {
-                        valid = true;
-                        break;
-                    }
-                    if valid {
-                        break;
-                    }
-                }
-            }
-
-            if !valid {
-                invalid_number = current;
-                break;
-            }
-        }
+        let _ = solve_part1(&lines);
     }
-    let part1_time = format!("{} µs", sw.elapsed().as_millis());
+    let part1_time = format!("{} µs", sw.elapsed().as_micros() / 1000);
 
+    let invalid_number = solve_part1(&lines);
     assert_eq!(18272118, invalid_number);
 
-    let mut decrypt = 0;
-
     let sw = std::time::Instant::now();
     for _ in 0..1000 {
-        for i in 0..lines.len() {
-            let mut sum = lines[i];
-            for j in i + 1..lines.len() {
-                sum += lines[j];
+        let _ = solve_part2(&lines, invalid_number);
+    }
+    let part2_time = format!("{} ns", sw.elapsed().as_nanos() / 1000);
 
-                if sum > invalid_number {
-                    break;
-                } else if sum == invalid_number {
-                    let mut smallest = 99999999999;
-                    let mut largest = 0;
-                    for k in i..=j {
-                        if lines[k] > largest {
-                            largest = lines[k];
-                        }
-                        if lines[k] < smallest {
-                            smallest = lines[k];
-                        }
-                    }
-                    decrypt = smallest + largest;
-                    break;
-                }
-            }
+    let decrypt = solve_part2(&lines, invalid_number).unwrap_or_default();
+    assert_eq!(2186361, decrypt);
 
-            if decrypt != 0 {
-                break;
+    format!(
+        "P1 (~{}): {}\n\tP2 (~{}): {}",
+        part1_time, invalid_number, part2_time, decrypt
+    )
+}
+
+fn solve_part1(lines: &Vec<u64>) -> u64 {
+    let invalid_number = lines
+        .windows(WINDOW_SIZE + 1)
+        .try_find(|&w| Some(validate_line(w, w[WINDOW_SIZE]).is_none()))
+        .unwrap_or(None)
+        .unwrap_or(&[0u64]);
+    let invalid_number = invalid_number[WINDOW_SIZE];
+    invalid_number
+}
+
+fn validate_line(window: &[u64], current: u64) -> Option<u64> {
+    for j in 0..WINDOW_SIZE {
+        for k in j + 1..WINDOW_SIZE {
+            if window[j] + window[k] == current {
+                return Some(current);
             }
         }
     }
-    let part2_time = format!("{} µs", sw.elapsed().as_millis());
+    None
+}
 
-    assert_eq!(2186361, decrypt);
+fn solve_part2(lines: &Vec<u64>, invalid_number: u64) -> Option<u64> {
+    let mut sum = 0;
+    for i in 0..lines.len() {
+        sum = lines[i];
+        for j in i + 1..lines.len() {
+            sum += lines[j];
 
-    format!("P1 (~{}): {}\n\tP2 (~{}): {}", part1_time, invalid_number, part2_time, decrypt)
+            if sum > invalid_number {
+                break;
+            } else if sum == invalid_number {
+                return Some(find_sum(lines, i, j));
+            }
+        }
+    }
+
+    None
+}
+
+fn find_sum(lines: &Vec<u64>, start: usize, end: usize) -> u64 {
+    let (min, max) = lines
+        .iter()
+        .skip(start)
+        .take(end - start)
+        .fold((1 << 63, 0), |a, &v| (a.0.min(v), a.1.max(v)));
+
+    min + max
 }
