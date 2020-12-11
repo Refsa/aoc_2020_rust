@@ -6,146 +6,244 @@ use std::{
     thread::current,
 };
 
-#[derive(Eq, PartialEq, Copy, Clone)]
-enum States {
-    None,
-    Empty,
-    Floor,
-    Occupied,
-}
-
 pub fn aoc_11(reader: BufReader<File>) -> String {
     let mut lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
 
     let part1 = part_1(&lines);
+    assert_eq!(2418, part1);
+    let part2 = part_2(&lines);
 
-    format!("{}", part1)
+    format!("P1: {}\n\tP2: {}", part1, part2)
 }
 
-fn generate_grid(lines: &Vec<String>) -> Vec<Vec<States>> {
-    let mut grid = Vec::new();
+const OFFSETS: &[(i32, i32)] = &[
+    (-1, -1),
+    (0, -1),
+    (1, -1),
+    (-1, 0),
+    (1, 0),
+    (-1, 1),
+    (0, 1),
+    (1, 1),
+];
 
-    for line in lines {
-        let line_states: Vec<States> = line
-            .chars()
+#[derive(Eq, PartialEq, Copy, Clone)]
+enum State {
+    None,
+    Floor,
+    Empty,
+    Occupied,
+}
+
+impl Into<char> for State {
+    fn into(self) -> char {
+        match self {
+            State::None => ' ',
+            State::Floor => '.',
+            State::Empty => 'L',
+            State::Occupied => '#',
+        }
+    }
+}
+
+struct Grid {
+    size: (usize, usize),
+    content: Vec<State>,
+}
+
+impl Grid {
+    pub fn new(lines: &Vec<String>) -> Grid {
+        let mut grid = Vec::new();
+
+        lines
+            .iter()
+            .map(|l| l.chars())
+            .flatten()
             .map(|c| match c {
-                '.' => States::Floor,
-                'L' => States::Empty,
-                _ => States::None,
+                '.' => State::Floor,
+                'L' => State::Empty,
+                '#' => State::Occupied,
+                _ => State::None,
             })
-            .collect();
-        grid.push(line_states);
+            .for_each(|s| grid.push(s));
+
+        Grid {
+            content: grid,
+            size: (lines[0].len(), lines.len()),
+        }
     }
 
-    grid
+    pub fn print_grid(&self) {
+        for i in 1..=self.content.len() {
+            let c: char = self.content[i - 1].into();
+            print!("{}", c);
+            if i % self.size.0 == 0 {
+                println!("");
+            }
+        }
+    }
+}
+
+fn pos_from_index(index: usize, size: (usize, usize)) -> (i32, i32) {
+    ((index % size.0) as i32, (index / (size.1 - 2)) as i32)
+}
+fn add_pos(pos1: (i32, i32), pos2: (i32, i32)) -> (i32, i32) {
+    (pos1.0 + pos2.0, pos1.1 + pos2.1)
+}
+fn index_from_pos(pos: (i32, i32), size: (usize, usize)) -> usize {
+    (pos.1 * size.0 as i32 + pos.0) as usize
+}
+fn pos_in_bounds(pos: (i32, i32), size: (usize, usize)) -> bool {
+    pos.0 >= 0 && pos.1 >= 0 && pos.0 < size.0 as i32 && pos.1 < size.1 as i32
+}
+
+fn run_solver(lines: &Vec<String>, rule_handler: fn(&Grid, usize) -> State) -> u32 {
+    let mut grid = Grid::new(lines);
+
+    loop {
+        let mut update_cells = Vec::new();
+
+        for i in 0..grid.content.len() {
+            let state = grid.content[i];
+            if state == State::Floor {
+                continue;
+            }
+
+            let next_state = (rule_handler)(&grid, i);
+
+            if state != next_state {
+                update_cells.push((i, next_state));
+            }
+        }
+
+        if update_cells.len() == 0 {
+            break;
+        }
+
+        for (i, s) in update_cells {
+            grid.content[i] = s;
+        }
+    }
+
+    grid.content
+        .iter()
+        .filter(|&&v| v == State::Occupied)
+        .count() as u32
 }
 
 fn part_2(lines: &Vec<String>) -> u32 {
-    let mut grid = generate_grid(lines);
+    let mut grid = Grid::new(lines);
 
-    let mut state_changed = true;
-    while state_changed {
-        let mut changed_cells = Vec::new();
-        state_changed = false;
-        for x in 0..grid[0].len() {
-            for y in 0..grid.len() {
-                let state = grid[y][x];
-                let next_state = check_state_p1(&grid, (x, y));
+    loop {
+        let mut update_cells = Vec::new();
 
-                if state != next_state {
-                    changed_cells.push((next_state, x, y));
-                    state_changed = true;
-                }
+        for i in 0..grid.content.len() {
+            let state = grid.content[i];
+            if state == State::Floor {
+                continue;
+            }
+
+            let next_state = update_state_p2(&grid, i);
+
+            if state != next_state {
+                update_cells.push((i, next_state));
             }
         }
 
-        for cc in changed_cells {
-            grid[cc.2][cc.1] = cc.0;
+        if update_cells.len() == 0 {
+            break;
+        }
+
+        for (i, s) in update_cells {
+            grid.content[i] = s;
         }
     }
 
-    0
+    grid.content
+        .iter()
+        .filter(|&&v| v == State::Occupied)
+        .count() as u32
+}
+
+fn update_state_p2(grid: &Grid, index: usize) -> State {
+    let state = grid.content[index];
+
+    let mut occupied = 0;
+    for &offset in OFFSETS {
+        let mut pos = add_pos(pos_from_index(index, grid.size), offset);
+        while pos_in_bounds(pos, grid.size) {
+            let index = index_from_pos(pos, grid.size);
+            if grid.content[index] == State::Occupied {
+                occupied += 1;
+            }
+            if grid.content[index] != State::Floor {
+                break;
+            }
+            pos = add_pos(pos, offset);
+        }
+    }
+
+    match state {
+        State::Occupied if occupied >= 5 => State::Empty,
+        State::Empty if occupied == 0 => State::Occupied,
+        _ => state,
+    }
 }
 
 fn part_1(lines: &Vec<String>) -> u32 {
-    let mut grid = generate_grid(lines);
+    let mut grid = Grid::new(lines);
 
-    let mut state_changed = true;
-    while state_changed {
-        let mut changed_cells = Vec::new();
-        state_changed = false;
-        for x in 0..grid[0].len() {
-            for y in 0..grid.len() {
-                let state = grid[y][x];
-                let next_state = check_state_p1(&grid, (x, y));
+    println!("{:?}", pos_from_index(96, grid.size));
 
-                if state != next_state {
-                    changed_cells.push((next_state, x, y));
-                    state_changed = true;
-                }
-            }
-        }
+    loop {
+        let mut update_cells = Vec::new();
 
-        for cc in changed_cells {
-            grid[cc.2][cc.1] = cc.0;
-        }
-    }
-
-    let mut occupied_count = 0;
-    for x in 0..grid[0].len() {
-        for y in 0..grid.len() {
-            if grid[y][x] == States::Occupied {
-                occupied_count += 1;
-            }
-        }
-    }
-
-    occupied_count
-}
-
-fn check_state_p1(grid: &Vec<Vec<States>>, pos: (usize, usize)) -> States {
-    let self_state = grid[pos.1][pos.0];
-    if self_state == States::Floor || self_state == States::None {
-        return self_state;
-    }
-
-    let mut occupied = 0;
-    for x in -1..=1 {
-        for y in -1..=1 {
-            let px = pos.0 as i32 + x;
-            let py = pos.1 as i32 + y;
-            if x == 0 && y == 0
-                || px < 0
-                || py < 0
-                || px >= grid[0].len() as i32
-                || py >= grid.len() as i32
-            {
+        for i in 0..grid.content.len() {
+            let state = grid.content[i];
+            if state == State::Floor {
                 continue;
             }
-            let px = px as usize;
-            let py = py as usize;
 
-            if grid[py][px] == States::Occupied {
-                occupied += 1;
+            let next_state = update_state(&grid, i);
+
+            if state != next_state {
+                update_cells.push((i, next_state));
             }
+        }
+
+        if update_cells.len() == 0 {
+            break;
+        }
+
+        for (i, s) in update_cells {
+            grid.content[i] = s;
         }
     }
 
-    match self_state {
-        States::Occupied => {
-            if occupied >= 4 {
-                States::Empty
-            } else {
-                States::Occupied
-            }
+    grid.content
+        .iter()
+        .filter(|&&v| v == State::Occupied)
+        .count() as u32
+}
+
+fn update_state(grid: &Grid, index: usize) -> State {
+    let state = grid.content[index];
+
+    let mut occupied = 0;
+    for &offset in OFFSETS {
+        let pos = add_pos(pos_from_index(index, grid.size), offset);
+        if !pos_in_bounds(pos, grid.size) {
+            continue;
         }
-        States::Empty => {
-            if occupied == 0 {
-                States::Occupied
-            } else {
-                States::Empty
-            }
+        let pos = index_from_pos(pos, grid.size);
+        if grid.content[pos] == State::Occupied {
+            occupied += 1;
         }
-        _ => self_state,
+    }
+
+    match state {
+        State::Occupied if occupied >= 4 => State::Empty,
+        State::Empty if occupied == 0 => State::Occupied,
+        _ => state,
     }
 }
