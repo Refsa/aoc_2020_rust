@@ -30,13 +30,27 @@ pub fn aoc_12(reader: BufReader<File>) -> String {
         })
         .collect();
 
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = solve_p1(&ops);
+    }
+    let part1_time = sw.elapsed().as_nanos() / 10000;
+
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = solve_p2(&ops);
+    }
+    let part2_time = sw.elapsed().as_nanos() / 10000;
+
     let part1 = solve_p1(&ops);
     assert_eq!(904, part1);
-
     let part2 = solve_p2(&ops);
     assert_eq!(18747, part2);
 
-    format!("P1: {}\n\tP2: {}", part1, part2)
+    format!(
+        "P1 (~{}ns): {}\n\tP2 (~{}ns): {}",
+        part1_time, part1, part2_time, part2
+    )
 }
 
 fn solve_p2(ops: &Vec<OpCode>) -> i32 {
@@ -159,12 +173,12 @@ fn change_heading_p1(direction: &Direction, boat: &mut Boat) {
         _ => 0,
     };
 
-    let mut current_heading = heading_to_int(&boat.heading) + change;
-    if current_heading < 0 {
-        current_heading += 4;
-    } else if current_heading > 3 {
-        current_heading -= 4;
-    }
+    let current_heading = match heading_to_int(&boat.heading) + change {
+        h if h < 0 => h + 4,
+        h if h > 3 => h - 4,
+        h => h,
+    };
+
     boat.heading = int_to_heading(current_heading);
 }
 
