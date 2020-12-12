@@ -6,45 +6,135 @@ use std::{
     rc::Rc,
 };
 
-fn get_opcode(op: &str, val: &str) -> OpCode {
+#[derive(Copy, Clone)]
+enum CompactOpCode {
+    None,
+    Heading((i32, i32)),
+    Direction(i32, i32),
+}
+
+const HEADINGS: &[(i32, i32)] = &[(0, 1), (1, 0), (0, -1), (-1, 0)];
+const ROTATIONS: &[(i32, i32)] = &[(-1, 1), (1, -1), (1, -1), (-1, 1)];
+
+fn parse_compact(op_val: (&str, &str)) -> CompactOpCode {
+    let (op, val) = op_val;
+    let val: i32 = val.parse().unwrap();
+
     match op {
-        "N" => OpCode::Heading(Heading::N(val.parse().unwrap())),
-        "E" => OpCode::Heading(Heading::E(val.parse().unwrap())),
-        "S" => OpCode::Heading(Heading::S(val.parse().unwrap())),
-        "W" => OpCode::Heading(Heading::W(val.parse().unwrap())),
-        "L" => OpCode::Direction(Direction::L(val.parse().unwrap())),
-        "R" => OpCode::Direction(Direction::R(val.parse().unwrap())),
-        "F" => OpCode::Direction(Direction::F(val.parse().unwrap())),
-        _ => OpCode::None,
+        "N" => CompactOpCode::Heading((0, val)),
+        "E" => CompactOpCode::Heading((val, 0)),
+        "S" => CompactOpCode::Heading((0, -val)),
+        "W" => CompactOpCode::Heading((-val, 0)),
+        "L" => CompactOpCode::Direction(1, -(val / 90)),
+        "R" => CompactOpCode::Direction(2, val / 90),
+        "F" => CompactOpCode::Direction(0, val),
+        _ => CompactOpCode::None,
     }
+}
+
+fn swap(target: &mut (i32, i32), sign: (i32, i32)) {
+    let temp = target.0;
+    target.0 = target.1 * sign.0;
+    target.1 = temp * sign.1;
+}
+
+fn compact_solution(lines: &Vec<String>) -> (i32, i32) {
+    let (_, (part1_x, part1_y)) =
+        lines
+            .iter()
+            .map(|l| parse_compact(l.split_at(1)))
+            .fold((1i32, (0, 0)), |mut a, op| {
+                match op {
+                    CompactOpCode::None => (),
+                    CompactOpCode::Heading((x, y)) => {
+                        a.1 .0 += x;
+                        a.1 .1 += y;
+                    }
+                    CompactOpCode::Direction(dir, val) => match dir {
+                        0 => {
+                            a.1 .0 += HEADINGS[a.0 as usize].0 * val;
+                            a.1 .1 += HEADINGS[a.0 as usize].1 * val;
+                        }
+                        1 | 2 => {
+                            a.0 += val;
+                            if a.0 > 3 {
+                                a.0 -= 4;
+                            } else if a.0 < 0 {
+                                a.0 += 4;
+                            }
+                        }
+                        _ => (),
+                    },
+                }
+                a
+            });
+
+    let (_, (part2_x, part2_y)) =
+        lines
+            .iter()
+            .map(|l| parse_compact(l.split_at(1)))
+            .fold(((10, 1), (0, 0)), |mut a, op| {
+                match op {
+                    CompactOpCode::None => (),
+                    CompactOpCode::Heading((x, y)) => {
+                        a.0 .0 += x;
+                        a.0 .1 += y;
+                    }
+                    CompactOpCode::Direction(dir, val) => match dir {
+                        0 => {
+                            a.1 .0 += a.0 .0 * val;
+                            a.1 .1 += a.0 .1 * val;
+                        }
+                        1 | 2 if val.abs() == 2 => {
+                            a.0 .0 = -a.0 .0;
+                            a.0 .1 = -a.0 .1;
+                        }
+                        1 | 2 => swap(
+                            &mut a.0,
+                            ROTATIONS[(dir * (val.abs() + 1) / 2 - 1) as usize],
+                        ),
+                        _ => (),
+                    },
+                }
+                a
+            });
+
+    (part1_x.abs() + part1_y.abs(), part2_x.abs() + part2_y.abs())
 }
 
 pub fn aoc_12(reader: BufReader<File>) -> String {
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
 
-    let ops: Vec<OpCode> = lines
-        .iter()
-        .map(|v| {
-            let (op, val) = v.split_at(1);
-            get_opcode(op, val)
-        })
-        .collect();
+    let (part1, part2) = compact_solution(&lines);
+    let part1_time = 0;
+    let part2_time = 0;
 
-    let sw = std::time::Instant::now();
-    for _ in 0..10000 {
-        let _ = solve_p1(&ops);
-    }
-    let part1_time = sw.elapsed().as_nanos() / 10000;
+    // // Parsing
+    // let ops: Vec<OpCode> = lines
+    //     .iter()
+    //     .map(|v| {
+    //         let (op, val) = v.split_at(1);
+    //         get_opcode(op, val)
+    //     })
+    //     .collect();
 
-    let sw = std::time::Instant::now();
-    for _ in 0..10000 {
-        let _ = solve_p2(&ops);
-    }
-    let part2_time = sw.elapsed().as_nanos() / 10000;
+    // // Benching
+    // let sw = std::time::Instant::now();
+    // for _ in 0..10000 {
+    //     let _ = solve_p1(&ops);
+    // }
+    // let part1_time = sw.elapsed().as_nanos() / 10000;
 
-    let part1 = solve_p1(&ops);
+    // let sw = std::time::Instant::now();
+    // for _ in 0..10000 {
+    //     let _ = solve_p2(&ops);
+    // }
+    // let part2_time = sw.elapsed().as_nanos() / 10000;
+
+    // // Solving
+    // let part1 = solve_p1(&ops);
     assert_eq!(904, part1);
-    let part2 = solve_p2(&ops);
+    // let part2 = solve_p2(&ops);
     assert_eq!(18747, part2);
 
     format!(
@@ -202,6 +292,19 @@ enum OpCode {
     None,
     Heading(Heading),
     Direction(Direction),
+}
+
+fn get_opcode(op: &str, val: &str) -> OpCode {
+    match op {
+        "N" => OpCode::Heading(Heading::N(val.parse().unwrap())),
+        "E" => OpCode::Heading(Heading::E(val.parse().unwrap())),
+        "S" => OpCode::Heading(Heading::S(val.parse().unwrap())),
+        "W" => OpCode::Heading(Heading::W(val.parse().unwrap())),
+        "L" => OpCode::Direction(Direction::L(val.parse().unwrap())),
+        "R" => OpCode::Direction(Direction::R(val.parse().unwrap())),
+        "F" => OpCode::Direction(Direction::F(val.parse().unwrap())),
+        _ => OpCode::None,
+    }
 }
 
 #[derive(Debug)]
