@@ -38,7 +38,7 @@ fn swap(target: &mut (i32, i32), sign: (i32, i32)) {
     target.1 = temp * sign.1;
 }
 
-fn compact_solution(lines: &Vec<String>) -> (i32, i32) {
+fn compact_solution_1(lines: &Vec<String>) -> i32 {
     let (_, (part1_x, part1_y)) =
         lines
             .iter()
@@ -69,6 +69,10 @@ fn compact_solution(lines: &Vec<String>) -> (i32, i32) {
                 a
             });
 
+    part1_x.abs() + part1_y.abs()
+}
+
+fn compact_solution_2(lines: &Vec<String>) -> i32 {
     let (_, (part2_x, part2_y)) =
         lines
             .iter()
@@ -99,48 +103,49 @@ fn compact_solution(lines: &Vec<String>) -> (i32, i32) {
                 a
             });
 
-    (part1_x.abs() + part1_y.abs(), part2_x.abs() + part2_y.abs())
+    part2_x.abs() + part2_y.abs()
 }
 
 pub fn aoc_12(reader: BufReader<File>) -> String {
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
 
-    let (part1, part2) = compact_solution(&lines);
-    let part1_time = 0;
-    let part2_time = 0;
+    // Benching
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = compact_solution_1(&lines);
+    }
+    let part1_time = sw.elapsed().as_nanos() / 10000;
 
-    // // Parsing
-    // let ops: Vec<OpCode> = lines
-    //     .iter()
-    //     .map(|v| {
-    //         let (op, val) = v.split_at(1);
-    //         get_opcode(op, val)
-    //     })
-    //     .collect();
-
-    // // Benching
-    // let sw = std::time::Instant::now();
-    // for _ in 0..10000 {
-    //     let _ = solve_p1(&ops);
-    // }
-    // let part1_time = sw.elapsed().as_nanos() / 10000;
-
-    // let sw = std::time::Instant::now();
-    // for _ in 0..10000 {
-    //     let _ = solve_p2(&ops);
-    // }
-    // let part2_time = sw.elapsed().as_nanos() / 10000;
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = compact_solution_2(&lines);
+    }
+    let part2_time = sw.elapsed().as_nanos() / 10000;
 
     // // Solving
-    // let part1 = solve_p1(&ops);
+    let part1 = compact_solution_1(&lines);
     assert_eq!(904, part1);
-    // let part2 = solve_p2(&ops);
+    let part2 = compact_solution_2(&lines);
     assert_eq!(18747, part2);
 
     format!(
         "P1 (~{}ns): {}\n\tP2 (~{}ns): {}",
         part1_time, part1, part2_time, part2
     )
+}
+
+// #### Longer Solution but more clear ####
+fn long_solution(lines: &Vec<String>) -> (i32, i32) {
+    // // Parsing
+    let ops: Vec<OpCode> = lines
+        .iter()
+        .map(|v| {
+            let (op, val) = v.split_at(1);
+            get_opcode(op, val)
+        })
+        .collect();
+
+    (solve_p1(&ops), solve_p2(&ops))
 }
 
 fn solve_p2(ops: &Vec<OpCode>) -> i32 {
