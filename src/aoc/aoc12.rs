@@ -6,6 +6,35 @@ use std::{
     rc::Rc,
 };
 
+pub fn aoc_12(reader: BufReader<File>) -> String {
+    let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
+
+    // Benching
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = compact_solution_1(&lines);
+    }
+    let part1_time = sw.elapsed().as_nanos() / 10000;
+
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let _ = compact_solution_2(&lines);
+    }
+    let part2_time = sw.elapsed().as_nanos() / 10000;
+
+    // // Solving
+    let part1 = compact_solution_1(&lines);
+    assert_eq!(904, part1);
+    let part2 = compact_solution_2(&lines);
+    assert_eq!(18747, part2);
+
+    format!(
+        "P1 (~{}ns): {}\n\tP2 (~{}ns): {}",
+        part1_time, part1, part2_time, part2
+    )
+}
+
+// #### Compact solution ####
 #[derive(Copy, Clone)]
 enum CompactOpCode {
     None,
@@ -32,7 +61,7 @@ fn parse_compact(op_val: (&str, &str)) -> CompactOpCode {
     }
 }
 
-fn swap(target: &mut (i32, i32), sign: (i32, i32)) {
+fn swap(target: &mut (i32, i32), sign: &(i32, i32)) {
     let temp = target.0;
     target.0 = target.1 * sign.0;
     target.1 = temp * sign.1;
@@ -95,7 +124,7 @@ fn compact_solution_2(lines: &Vec<String>) -> i32 {
                         }
                         1 | 2 => swap(
                             &mut a.0,
-                            ROTATIONS[(dir * (val.abs() + 1) / 2 - 1) as usize],
+                            &ROTATIONS[(dir * (val.abs() + 1) / 2 - 1) as usize],
                         ),
                         _ => (),
                     },
@@ -104,34 +133,6 @@ fn compact_solution_2(lines: &Vec<String>) -> i32 {
             });
 
     part2_x.abs() + part2_y.abs()
-}
-
-pub fn aoc_12(reader: BufReader<File>) -> String {
-    let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
-
-    // Benching
-    let sw = std::time::Instant::now();
-    for _ in 0..10000 {
-        let _ = compact_solution_1(&lines);
-    }
-    let part1_time = sw.elapsed().as_nanos() / 10000;
-
-    let sw = std::time::Instant::now();
-    for _ in 0..10000 {
-        let _ = compact_solution_2(&lines);
-    }
-    let part2_time = sw.elapsed().as_nanos() / 10000;
-
-    // // Solving
-    let part1 = compact_solution_1(&lines);
-    assert_eq!(904, part1);
-    let part2 = compact_solution_2(&lines);
-    assert_eq!(18747, part2);
-
-    format!(
-        "P1 (~{}ns): {}\n\tP2 (~{}ns): {}",
-        part1_time, part1, part2_time, part2
-    )
 }
 
 // #### Longer Solution but more clear ####
