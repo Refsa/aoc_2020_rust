@@ -22,7 +22,8 @@ fn main() {
     // run(10, aoc_10);
     // run(11, aoc_11);
     // run(12, aoc_12);
-    run(13, aoc_13);
+    // run(13, aoc_13);
+    run(14, aoc_14);
 }
 
 fn load_file(path: &str) -> BufReader<File> {

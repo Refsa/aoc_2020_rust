@@ -4,6 +4,7 @@ use std::{
     io::{BufRead, BufReader},
     rc::Rc,
 };
+use gcd::*;
 
 fn frac(val: f32) -> f32 {
     val - val as u32 as f32
@@ -19,53 +20,37 @@ pub fn aoc_13(reader: BufReader<File>) -> String {
     format!("Part1: {}\n\tPart2: {}", part1, part2)
 }
 
+fn lcm(a: usize, b: usize) -> usize {
+    (a * b) / a.gcd(b)
+}
+
 fn solve_part2(lines: &Vec<String>) -> u32 {
-    let busses: Vec<u32> = lines[1]
-        .split(',')
-        .map(|v| {
-            if v == "x" {
-                0
-            } else {
-                v.parse::<u32>().unwrap()
-            }
-        })
-        .map(|v| v)
-        .collect();
+    let mut busses: Vec<(usize, usize)> = Vec::new();
 
-    println!("{:?} - {}", busses, busses.len());
-    let zeros = busses.iter().filter(|&&b| b == 0).count();
-
-    let step = busses[0] as usize;
-    let mut timestamp = 100_000_000_000_000 - (100_000_000_000_000 % step);
-    let mut hits = zeros;
-
-    // BusID % (29 * Timestamp) = Index
-
-    while hits != busses.len() {
-        hits = zeros;
-        timestamp += step;
-
-        if timestamp % 10_000_000 == 0 {
-            println!("{}", timestamp);
-        }
-
-        for (i, &t) in busses.iter().enumerate() {
-            if t == 0 {
-                continue;
-            }
-
-            let mut at = timestamp % t as usize;
-            if at != 0 {
-                at = t as usize - at;
-            }
-
-            if at == i {
-                hits += 1;
-            }
+    for (i, c) in lines[1].split(',').enumerate() {
+        if c != "x" {
+            busses.push((c.parse::<usize>().unwrap(), i));
         }
     }
 
-    println!("{}", timestamp);
+    let first = busses.first().unwrap();
+    let last = busses.last().unwrap();
+
+    let step = first.0;
+    let mut timestamp = step;
+    
+    let mut l = 1;
+    let mut m = 1;
+    for (val, i) in busses {
+        l = lcm(l, val + i);
+        m *= val;
+    }
+
+    l = l % m;
+
+    println!("{} - {}", l, l % 3417);
+
+    // println!("{}", timestamp);
 
     0
 }
