@@ -2,6 +2,7 @@
 #![feature(slice_fill)]
 #![feature(str_split_once)]
 #![feature(try_find)]
+#![feature(generic_associated_types)]
 
 use std::fs::File;
 use std::{io::BufReader, path::Path};
