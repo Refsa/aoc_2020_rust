@@ -9,33 +9,22 @@ use std::{
 pub fn aoc_14(reader: BufReader<File>) -> String {
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
 
-    let part1 = part_1(&lines);
+    let part1 = ChipV1::run(&lines).count_memory();
     assert_eq!(5875750429995, part1);
-
-    let part1 = part_2(&lines);
 
     format!("Part1: {}", part1)
 }
 
-struct ChipV2 {
-    memory: HashMap<u64, u64>,
+enum Ops {
+    Mask(String),
+    MemoryOp((u64, u64)),
 }
 
-fn part_2(lines: &Vec<String>) -> u64 {
-    let mut programs = Vec::new();
-    let mut program = Program::default();
-    for line in lines {
-        if line.starts_with("mask") {
-            if program.mems.len() != 0 {
-                programs.push(program);
-            }
-
-            program = Program::default();
-            let (_, mask) = line.split_once('=').unwrap();
-            program.mask = mask.trim().to_string();
-            continue;
-        }
-
+fn parse_line(line: &String) -> Ops {
+    if line.starts_with("mask") {
+        let (_, mask) = line.split_once('=').unwrap();
+        Ops::Mask(mask.trim().to_string())
+    } else {
         let (mem, value) = line.split_once('=').unwrap();
         let value: u64 = value.trim().parse().unwrap();
         let mem: u64 = mem
@@ -45,79 +34,49 @@ fn part_2(lines: &Vec<String>) -> u64 {
             .trim_end_matches("] ")
             .parse()
             .unwrap();
-        program.mems.push((mem, value));
+        Ops::MemoryOp((mem, value))
     }
-
-
-
-    0
 }
 
-#[derive(Default, Debug)]
-struct Program {
-    mask: String,
-    mems: Vec<(u64, u64)>,
+type Memory = HashMap<u64, u64>;
+
+#[derive(Default)]
+struct ChipV1 {
+    memory: Memory,
 }
 
-pub fn part_1(lines: &Vec<String>) -> u64 {
-    let mut programs = Vec::new();
+impl ChipV1 {
+    pub fn run(lines: &Vec<String>) -> ChipV1 {
+        let mut chip = ChipV1::default();
 
-    let mut program = Program::default();
-    for line in lines {
-        if line.starts_with("mask") {
-            if program.mems.len() != 0 {
-                programs.push(program);
-            }
-
-            program = Program::default();
-            let (_, mask) = line.split_once('=').unwrap();
-            program.mask = mask.trim().to_string();
-            continue;
-        }
-
-        let (mem, value) = line.split_once('=').unwrap();
-        let value: u64 = value.trim().parse().unwrap();
-        let mem: u64 = mem
-            .split("[")
-            .nth(1)
-            .unwrap()
-            .trim_end_matches("] ")
-            .parse()
-            .unwrap();
-        program.mems.push((mem, value));
-    }
-    programs.push(program);
-
-    for program in programs.iter_mut() {
-        for (index, value) in program.mems.iter_mut() {
-            for (i, c) in program.mask.chars().rev().enumerate() {
-                if c == 'X' {
-                    // let bit: u64 = 1 << i;
-                    // let value = *value & bit;
-                    // flag = value | flag;
-                } else {
-                    let bit: u64 = c.to_digit(10).unwrap() as u64;
-                    if bit != 0 {
-                        let bit = 1 << i;
-                        *value |= bit;
-                    } else {
-                        let bit = 1 << i;
-                        *value &= !bit;
+        let mut last_mask_op = "".to_string();
+        for line in lines {
+            match parse_line(line) {
+                Ops::Mask(mask) => {
+                    last_mask_op = mask;
+                }
+                Ops::MemoryOp((loc, mut val)) => {
+                    for (i, c) in last_mask_op.chars().rev().enumerate() {
+                        if c != 'X' {
+                            let bit: u64 = c.to_digit(10).unwrap() as u64;
+                            if bit != 0 {
+                                let bit = 1 << i;
+                                val |= bit;
+                            } else {
+                                let bit = 1 << i;
+                                val &= !bit;
+                            }
+                        }
                     }
+                    chip.memory.insert(loc, val);
                 }
             }
         }
+
+        chip
     }
 
-    let mut set_mems = HashMap::new();
-    for (mem, val) in programs.iter().map(|p| p.mems.clone()).flatten() {
-        set_mems.insert(mem, val);
+    pub fn count_memory(&self) -> u64 {
+        self.memory.values().sum()
     }
-
-    let mut sum = 0;
-    for (k, v) in set_mems {
-        sum += v;
-    }
-
-    sum
 }
