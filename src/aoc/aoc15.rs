@@ -17,45 +17,22 @@ pub fn aoc_15(reader: BufReader<File>) -> String {
         .map(|c| c.parse().unwrap())
         .collect::<Vec<usize>>();
 
-    let part1 = part_1(&nums);
+    let part1 = solve_part(&nums, 2020);
     assert_eq!(410, part1);
-
-    let part2 = part_2(&nums);
+    let part2 = solve_part(&nums, 30000000);
+    assert_eq!(238, part2);
 
     format!("Part 1: {}\n\tPart 2: {}", part1, part2)
 }
 
-fn part_2(nums: &Vec<usize>) -> usize {
-    let mut spoken: HashMap<usize, (usize, usize)> = HashMap::new();
-    for (i, num) in nums.iter().enumerate() {
-        spoken.insert(*num, (i + 1, 0));
-    }
-
-    let mut last_number = *nums.last().unwrap();
-    for i in nums.len() + 1..=30000000 {
-        let current = spoken[&last_number];
-
-        let diff = match current.1 {
-            0 => 0,
-            _ => current.0 - current.1,
-        };
-
-        spoken.insert(diff, swap_insert(*spoken.get(&diff).unwrap_or(&(0, 0)), i));
-
-        last_number = diff;
-    }
-
-    last_number
-}
-
-fn part_1(nums: &Vec<usize>) -> usize {
-    let mut spoken = vec![(0usize, 0usize); 65535];
+fn solve_part(nums: &Vec<usize>, stop_at: usize) -> usize {
+    let mut spoken = vec![(0usize, 0usize); stop_at];
     for (i, num) in nums.iter().enumerate() {
         spoken[*num] = (i + 1, 0);
     }
 
     let mut last_number = *nums.last().unwrap();
-    for i in nums.len() + 1..2021 {
+    for i in nums.len() + 1..=stop_at {
         let current = spoken[last_number];
 
         let diff = match current.1 {
@@ -64,7 +41,6 @@ fn part_1(nums: &Vec<usize>) -> usize {
         };
 
         spoken[diff] = swap_insert(spoken[diff], i);
-        // println!("{}: {} - {}", i, last_number, diff);
 
         last_number = diff;
     }
