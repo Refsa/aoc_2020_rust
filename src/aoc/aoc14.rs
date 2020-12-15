@@ -4,16 +4,18 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+type DefaultChip = Box<dyn Chip<MemoryStorage = HashMap<u64, u64>, Ops = Ops>>;
+
 pub fn aoc_14(reader: BufReader<File>) -> String {
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
 
-    let mut chipv1: Box<dyn Chip<MemoryStorage = HashMap<u64, u64>, Ops = Ops>> = ChipV1::init();
+    let mut chipv1: DefaultChip = ChipV1::init();
     chipv1.run(&lines);
     let part1 = chipv1.get_memory().count();
     (5875750429995 != part1).then(|| println!("Part 1 Failed"));
     assert_eq!(5875750429995, part1);
 
-    let mut chipv2: Box<dyn Chip<MemoryStorage = HashMap<u64, u64>, Ops = Ops>> = ChipV2::init();
+    let mut chipv2: DefaultChip = ChipV2::init();
     chipv2.run(&lines);
     let part2 = chipv2.get_memory().count();
     (5272149590143 != part2).then(|| println!("Part 2 Failed"));
