@@ -1,13 +1,11 @@
-use std::collections::{HashMap, HashSet};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
 };
 
-fn swap_insert(mut tuple: (usize, usize), next: usize) -> (usize, usize) {
+fn swap_insert(tuple: &mut (usize, usize), next: usize) {
     tuple.1 = tuple.0;
     tuple.0 = next;
-    tuple
 }
 
 pub fn aoc_15(reader: BufReader<File>) -> String {
@@ -17,12 +15,27 @@ pub fn aoc_15(reader: BufReader<File>) -> String {
         .map(|c| c.parse().unwrap())
         .collect::<Vec<usize>>();
 
+    let sw = std::time::Instant::now();
+    for _ in 0..10000 {
+        let part1 = solve_part(&nums, 2020);
+    }
+    let elapsed_part1 = sw.elapsed().as_micros() / 10000;
+
+    let sw = std::time::Instant::now();
+    for _ in 0..5 {
+        let part2 = solve_part(&nums, 30000000);
+    }
+    let elapsed_part2 = sw.elapsed().as_millis() / 5;
+
     let part1 = solve_part(&nums, 2020);
     assert_eq!(410, part1);
     let part2 = solve_part(&nums, 30000000);
     assert_eq!(238, part2);
 
-    format!("Part 1: {}\n\tPart 2: {}", part1, part2)
+    format!(
+        "Part 1 (~{}µs): {}\n\tPart 2 (~{}ms): {}",
+        elapsed_part1, part1, elapsed_part2, part2
+    )
 }
 
 fn solve_part(nums: &Vec<usize>, stop_at: usize) -> usize {
@@ -40,8 +53,7 @@ fn solve_part(nums: &Vec<usize>, stop_at: usize) -> usize {
             _ => current.0 - current.1,
         };
 
-        spoken[diff] = swap_insert(spoken[diff], i);
-
+        swap_insert(&mut spoken[diff], i);
         last_number = diff;
     }
 
